@@ -55,9 +55,14 @@ public class SplunkHecAppender extends AppenderBase<ILoggingEvent> {
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, trustAll, new SecureRandom());
 
+            // Also disable hostname verification (empty string = no algorithm = no check)
+            javax.net.ssl.SSLParameters sslParams = new javax.net.ssl.SSLParameters();
+            sslParams.setEndpointIdentificationAlgorithm("");
+
             this.httpClient = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .sslContext(sslContext)
+                    .sslParameters(sslParams)
                     .build();
         } catch (Exception e) {
             System.err.println("[SplunkHecAppender] Failed to create trust-all SSLContext: " + e.getMessage());
