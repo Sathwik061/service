@@ -26,6 +26,7 @@ public class OrderApplication {
 
         String zeebeAddress = System.getenv("ZEEBE_ADDRESS");
         String zeebeGrpcAddress = System.getenv("ZEEBE_GRPC_ADDRESS");
+        String zeebeRestAddress = System.getenv("ZEEBE_REST_ADDRESS");
         String clientId = System.getenv("ZEEBE_CLIENT_ID");
         String clientSecret = System.getenv("ZEEBE_CLIENT_SECRET");
         String authorizationServerUrl = System.getenv("ZEEBE_AUTHORIZATION_SERVER_URL");
@@ -49,6 +50,13 @@ public class OrderApplication {
                     : "grpcs://456d1d4f-ccc8-40ca-b157-0a96eeada22c.jfk-1.zeebe.camunda.io:443");
             builder.grpcAddress(URI.create(grpcUri))
                 .credentialsProvider(oauthBuilder.build());
+            // Set REST address if provided; otherwise force gRPC so deploy
+            // commands don't fall back to the default http://0.0.0.0:8080
+            if (zeebeRestAddress != null && !zeebeRestAddress.isBlank()) {
+                builder.restAddress(URI.create(zeebeRestAddress));
+            } else {
+                builder.preferRestOverGrpc(false);
+            }
         } else {
             // Default to local Camunda 8 instance (c8 run / Docker)
             String localGrpc = zeebeAddress != null ? zeebeAddress : "http://localhost:26500";
