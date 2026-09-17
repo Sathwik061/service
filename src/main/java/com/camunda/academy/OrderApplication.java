@@ -1,8 +1,10 @@
 package com.camunda.academy;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Map;
 import java.util.Scanner;
+import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +65,25 @@ public class OrderApplication {
             builder.grpcAddress(URI.create(localGrpc))
                 .restAddress(URI.create("http://localhost:8080"))
                 .preferRestOverGrpc(false);
+        }
+
+        // ── Health-check HTTP server (satisfies Render Web Service port scan) ──
+        // Uses JDK built-in HttpServer — no extra dependencies.
+        // Render expects a port to be open; workers use outbound gRPC only.
+        try {
+            int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "10000"));
+            HttpServer healthServer = HttpServer.create(new InetSocketAddress(port), 0);
+            healthServer.createContext("/", exchange -> {
+                byte[] body = "OK".getBytes();
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.getResponseBody().close();
+            });
+            healthServer.setExecutor(null);
+            healthServer.start();
+            logger.info("Health-check server listening on port {}", port);
+        } catch (Exception e) {
+            logger.warn("Could not start health-check server: {}", e.getMessage());
         }
 
         try (final CamundaClient client = builder.build()) {
