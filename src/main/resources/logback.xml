@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ─── Console Appender ─────────────────────────────────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ─── Splunk HEC Appender ───────────────────────────────────────────── -->
+    <!--
+        Set env vars on Render (or locally):
+          SPLUNK_HEC_URL   = https://inputs.prd-p-0hb92.splunkcloud.com:8088
+          SPLUNK_HEC_TOKEN = 5e8221bb-801a-4d26-a277-eaaa8c16bf82
+
+        Defaults below match your Splunk Cloud instance — env vars override them.
+    -->
+    <appender name="SPLUNK" class="com.camunda.academy.logging.SplunkHecAppender">
+        <url>${SPLUNK_HEC_URL:-https://inputs.prd-p-0hb92.splunkcloud.com:8088}</url>
+        <token>${SPLUNK_HEC_TOKEN:-5e8221bb-801a-4d26-a277-eaaa8c16bf82}</token>
+        <source>camunda-order-workers</source>
+        <sourcetype>camunda:java:worker</sourcetype>
+        <index>main</index>
+
+        <!-- Only forward INFO and above to Splunk -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- Async wrapper — non-blocking, 512-event queue, never drops messages -->
+    <appender name="SPLUNK_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="SPLUNK"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <!-- ─── Logger Levels ─────────────────────────────────────────────────── -->
+
+    <!-- Silence verbose Camunda/gRPC internals in Splunk -->
+    <logger name="io.camunda" level="WARN"/>
+    <logger name="io.grpc"    level="WARN"/>
+    <logger name="io.netty"   level="WARN"/>
+
+    <!-- Your app code — full INFO -->
+    <logger name="com.camunda.academy" level="INFO"/>
+
+    <!-- Root: console always on + async Splunk -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SPLUNK_ASYNC"/>
+    </root>
+
+</configuration>
