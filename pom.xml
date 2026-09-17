@@ -28,6 +28,15 @@
       <groupId>com.github.javafaker</groupId>
       <artifactId>javafaker</artifactId>
       <version>1.0.2</version>
+      <exclusions>
+        <!-- javafaker uses snakeyaml:android classifier which Maven treats as a
+             separate artifact from snakeyaml:2.3 — both land in the fat JAR and
+             the old 1.x wins. Exclude it so only snakeyaml 2.3 is present. -->
+        <exclusion>
+          <groupId>org.yaml</groupId>
+          <artifactId>snakeyaml</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <!-- Logback classic replaces slf4j-simple; reads logback.xml for Splunk HEC appender -->
     <dependency>
