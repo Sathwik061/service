@@ -13,17 +13,15 @@ public class ProcessPaymentHandler implements JobHandler {
 
     @Override
     public void handle(JobClient client, ActivatedJob job) throws Exception {
-        logger.error("Handling job: {} Payment task failed! Triggering Sentinel SRE Agent...", job.getKey());
+        logger.info("Handling job: {} Processing payment", job.getKey());
 
-        // Throws BPMN error -> caught by Error Boundary Event in Camunda -> Sentinel investigates & emails RCA
-        String errText = "PaymentGatewayTimeout: High error rate (45.2%) on payment-service. DatabaseConnectionPoolExhausted: Unable to acquire connection from pool after 30000ms timeout. Affected service: payment-service";
-        
-        client.newThrowErrorCommand(job.getKey())
-            .errorCode("PROCESS_ERROR")
-            .errorMessage(errText)
-            .variables(java.util.Map.of("errorMessage", errText))
+        // Simulate payment processing
+        String orderId = (String) job.getVariablesAsMap().getOrDefault("orderId", "unknown");
+        logger.info("Handling job: {} Payment processed successfully for order {}", job.getKey(), orderId);
+
+        client.newCompleteCommand(job.getKey())
+            .variables(java.util.Map.of("paymentStatus", "COMPLETED"))
             .send()
             .join();
     }
 }
-
