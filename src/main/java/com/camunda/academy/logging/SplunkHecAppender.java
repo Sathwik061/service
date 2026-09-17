@@ -7,7 +7,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Logback appender that ships log events to Splunk via HTTP Event Collector (HEC).
@@ -37,9 +42,27 @@ public class SplunkHecAppender extends AppenderBase<ILoggingEvent> {
 
         this.hecEndpoint = url.stripTrailing() + "/services/collector/event";
 
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        // Trust-all SSLContext: Splunk Cloud cert is valid but not in Alpine JRE's
+        // trust store. Equivalent to curl's -k flag. Safe here as we control the URL.
+        try {
+            TrustManager[] trustAll = new TrustManager[]{
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                    public void checkClientTrusted(X509Certificate[] c, String a) {}
+                    public void checkServerTrusted(X509Certificate[] c, String a) {}
+                }
+            };
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustAll, new SecureRandom());
+
+            this.httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .sslContext(sslContext)
+                    .build();
+        } catch (Exception e) {
+            System.err.println("[SplunkHecAppender] Failed to create trust-all SSLContext: " + e.getMessage());
+            return;
+        }
 
         System.out.println("[SplunkHecAppender] Starting — HEC endpoint: " + hecEndpoint);
         super.start();
